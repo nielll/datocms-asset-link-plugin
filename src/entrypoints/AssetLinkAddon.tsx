@@ -12,14 +12,16 @@ function getAtPath(obj: any, path: string): any {
 function extractUploadIds(value: unknown, ctx: RenderFieldExtensionCtx): string[] {
   if (!value) return [];
 
-  // gallery: [{ upload_id: "..." }, ...]
+  // Asset Gallery: [{ upload_id: "..." }, ...]
   if (Array.isArray(value)) {
     return value
       .map((x) => (x as any)?.upload_id)
       .filter((x): x is string => typeof x === "string");
   }
 
-  // file: { upload_id: "..." }  OR localized: { en: {upload_id}, de: {upload_id} }
+  // Single Asset:
+  // { upload_id: "..." }
+  // or localized: { en: { upload_id }, de: { upload_id } }
   if (typeof value === "object") {
     const obj = value as Record<string, unknown>;
 
@@ -47,6 +49,7 @@ function ReadonlyUrlField({ label, value }: { label: string; value: string }) {
       <input
         value={value}
         readOnly
+        onFocus={(e) => e.currentTarget.select()}
         style={{
           width: "100%",
           padding: "8px 10px",
@@ -55,7 +58,6 @@ function ReadonlyUrlField({ label, value }: { label: string; value: string }) {
           background: "rgba(0,0,0,0.03)",
           fontSize: 13,
         }}
-        onFocus={(e) => e.currentTarget.select()}
       />
     </div>
   );
@@ -69,13 +71,16 @@ export default function AssetLinkAddon({ ctx }: Props) {
   const client = useMemo(() => {
     const token = (ctx as any).currentUserAccessToken as string | undefined;
     if (!token) return null;
-    return buildClient({ apiToken: token, environment: ctx.environment });
+    return buildClient({
+      apiToken: token,
+      environment: ctx.environment,
+    });
   }, [ctx]);
 
-  const fieldValue = useMemo(() => getAtPath(ctx.formValues as any, ctx.fieldPath), [
-    ctx.formValues,
-    ctx.fieldPath,
-  ]);
+  const fieldValue = useMemo(
+    () => getAtPath(ctx.formValues as any, ctx.fieldPath),
+    [ctx.formValues, ctx.fieldPath],
+  );
 
   const uploadIds = useMemo(() => extractUploadIds(fieldValue, ctx), [fieldValue, ctx]);
 
@@ -95,11 +100,27 @@ export default function AssetLinkAddon({ ctx }: Props) {
 
       setLoading(true);
       try {
-        const uploads = await Promise.all(uploadIds.map((id) => client.uploads.find(id)));
-        const nextUrls = uploads.map((u) => u.url).filter((u): u is string => typeof u === "string");
+        // optional: auch Upload-IDs deduplizieren
+        const uniqueUploadIds = Array.from(new Set(uploadIds));
+
+        const uploads = await Promise.all(
+          uniqueUploadIds.map((id) => client.uploads.find(id)),
+        );
+
+        // URLs deduplizieren
+        const nextUrls = Array.from(
+          new Set(
+            uploads
+              .map((u) => u.url)
+              .filter((u): u is string => typeof u === "string"),
+          ),
+        );
+
         if (!cancelled) setUrls(nextUrls);
       } catch (e: any) {
-        if (!cancelled) setError(e?.message ?? "Fehler beim Laden der Upload-Daten");
+        if (!cancelled) {
+          setError(e?.message ?? "Fehler beim Laden der Upload-Daten");
+        }
       } finally {
         if (!cancelled) setLoading(false);
       }
@@ -126,7 +147,7 @@ export default function AssetLinkAddon({ ctx }: Props) {
 
       {urls.map((url, i) => (
         <div
-          key={url + i}
+          key={url}
           style={{ display: "flex", gap: 8, alignItems: "flex-end", marginTop: 8 }}
         >
           <ReadonlyUrlField
