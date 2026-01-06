@@ -1,0 +1,12 @@
+{
+  "name": "Asset Link Helper",
+  "description": "Shows asset URL + copy button",
+  "version": "0.1.0",
+  "field_extensions": [
+    {
+      "id": "assetLinkAddon",
+      "name": "Asset link",
+      "type": "addon"
+    }
+  ]
+}
