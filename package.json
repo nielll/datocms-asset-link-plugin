@@ -1,10 +1,9 @@
 {
-  "name": "datocms-plugin-<INSERT-YOUR-PACKAGE-NAME-HERE>",
-  "description": "<INSERT-YOUR-PLUGIN-DESCRIPTION-HERE>",
-  "homepage": "https://github.com/<USER>/<REPO>",
+  "name": "datocms-asset-link-plugin",
+  "description": "adds file url to the bottom of file/gallery item",
   "private": false,
   "version": "0.1.0",
-  "author": "<YOUR-NAME> <<YOUR-EMAIL>>",
+  "author": "NE",
   "type": "module",
   "keywords": [
     "datocms-plugin"

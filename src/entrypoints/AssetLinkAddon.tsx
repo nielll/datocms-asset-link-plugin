@@ -1,13 +1,17 @@
-import React, { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import type { RenderFieldExtensionCtx } from "datocms-plugin-sdk";
 import { Canvas, TextField, Button, Spinner } from "datocms-react-ui";
 import { buildClient } from "@datocms/cma-client-browser";
-import get from "lodash-es/get";
 
 type Props = { ctx: RenderFieldExtensionCtx };
 
 type FileValue = { upload_id?: string } | null;
 type GalleryValue = Array<{ upload_id?: string }> | null;
+
+function getAtPath(obj: any, path: string): any {
+  // ctx.fieldPath ist i.d.R. sowas wie "fields.myGallery" (mit Punkten)
+  return path.split(".").reduce((acc, key) => (acc == null ? acc : acc[key]), obj);
+}
 
 function extractUploadIds(value: unknown, ctx: RenderFieldExtensionCtx): string[] {
   if (!value) return [];
@@ -22,14 +26,13 @@ function extractUploadIds(value: unknown, ctx: RenderFieldExtensionCtx): string[
     // wir versuchen ctx.locale, sonst nehmen wir das erste Locale-Objekt mit upload_id
     const maybeLocale = (ctx as any).locale as string | undefined;
     if (maybeLocale && obj[maybeLocale] && typeof obj[maybeLocale] === "object") {
-      const inner = obj[maybeLocale] as any;
+      const inner = (maybeLocale ? (obj as any)?.[maybeLocale] : undefined) as any;
       if (typeof inner?.upload_id === "string") return [inner.upload_id];
     }
 
     for (const v of Object.values(obj)) {
-      if (v && typeof v === "object" && typeof (v as any).upload_id === "string") {
-        return [(v as any).upload_id];
-      }
+      const up = (v as any)?.upload_id;
+      if (typeof up === "string") return [up];
     }
 
     return [];
@@ -57,7 +60,11 @@ export default function AssetLinkAddon({ ctx }: Props) {
     return buildClient({ apiToken: token, environment: ctx.environment });
   }, [ctx]);
 
-  const fieldValue = useMemo(() => get(ctx.formValues, ctx.fieldPath), [ctx.formValues, ctx.fieldPath]);
+  const fieldValue = useMemo(
+    () => getAtPath(ctx.formValues as any, ctx.fieldPath),
+    [ctx.formValues, ctx.fieldPath],
+  );
+
   const uploadIds = useMemo(() => extractUploadIds(fieldValue, ctx), [fieldValue, ctx]);
 
   useEffect(() => {
@@ -112,7 +119,7 @@ export default function AssetLinkAddon({ ctx }: Props) {
             name={`asset-url-${i}`}
             label={urls.length > 1 ? `Asset URL ${i + 1}` : "Asset URL"}
             value={url}
-            readOnly
+            disabled
           />
           <Button type="button" buttonSize="s" onClick={() => copy(url)}>
             Copy
